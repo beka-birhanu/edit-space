@@ -1,0 +1,47 @@
+services:
+  postgres:
+    env_file:
+      - .env
+    image: postgres
+    container_name: postgres
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    networks:
+      - network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  client:
+    env_file:
+      - .env
+    build:
+      context: client
+      args:
+        - VITE_SERVER_BASE_URL=${SERVER_BASE_URL}
+        - VITE_SSL=${SSL}
+    image: ${DOCKER_REGISTRY}/edit-wars-client:latest
+    ports:
+      - "3000:3000"
+
+  server:
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    build: server
+    image: ${DOCKER_REGISTRY}/edit-wars-server:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - network
+
+networks:
+  network:
+    driver: bridge
+
+volumes:
+  postgres_data:
